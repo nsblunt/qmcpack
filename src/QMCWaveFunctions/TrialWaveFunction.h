@@ -124,6 +124,9 @@ public:
   ///differential laplacians
   ParticleSet::ParticleLaplacian_t L;
 
+  ///the size of gradient component (QMCTraits::DIM)*the number of particles
+  int TotalDim;
+
   TrialWaveFunction(Communicate* c);
 
   ~TrialWaveFunction();
@@ -380,9 +383,6 @@ private:
 
   ///the size of ParticleSet
   int NumPtcls;
-
-  ///the size of gradient component (QMCTraits::DIM)*the number of particles
-  int TotalDim;
 
   ///index of the active particle
   int WorkingPtcl;
