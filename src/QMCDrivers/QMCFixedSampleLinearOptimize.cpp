@@ -67,7 +67,8 @@ vdeps(1,std::vector<double>()),
   StabilizerMethod("best"), GEVSplit("no"), stepsize(0.25), doAdaptiveThreeShift(false),
   targetExcitedStr("no"), targetExcited(false), block_lmStr("no"), block_lm(false),
   bestShift_i(-1.0), bestShift_s(-1.0), shift_i_input(0.01), shift_s_input(1.00), doOneShiftOnly(false),
-  num_shifts(3), nblocks(1), nolds(1), nkept(1), nsamp_comp(0), omega_shift(0.0), max_param_change(0.3),
+  num_shifts(3), nblocks(1), nolds(1), nkept(1), nsamp_comp(0), omega_shift(0.0), init_omega_shift(0.0),
+  max_param_change(0.3), update_omega_iter(-1), update_omega_steps(1),
   max_relative_cost_change(10.0), block_first(true), block_second(false), block_third(false)
 {
   IsQMCDriver=false;
@@ -89,15 +90,22 @@ vdeps(1,std::vector<double>()),
   m_param.add(nolds, "nolds", "int");
   m_param.add(nkept, "nkept", "int");
   m_param.add(nsamp_comp, "nsamp_comp", "int");
-  m_param.add(omega_shift,"omega","double");
+
+  // 2017.07.07 JACKI
+  m_param.add(init_omega_shift,"omega","double");
+  m_param.add(update_omega_iter,"update_omega_iter","int");
+  m_param.add(update_omega_steps,"update_omega_steps","int");
+
   m_param.add(max_relative_cost_change,"max_relative_cost_change","double");
   m_param.add(max_param_change,"max_param_change","double");
   m_param.add(shift_i_input, "shift_i", "double");
   m_param.add(shift_s_input, "shift_s", "double");
   m_param.add(num_shifts, "num_shifts", "int");
 
-  #ifdef HAVE_LMY_ENGINE
-  //app_log() << "construct QMCFixedSampleLinearOptimize" << endl;
+  // 2017.07.08 JACKI
+  omega_shift = init_omega_shift; 
+
+#ifdef HAVE_LMY_ENGINE
   std::vector<double> shift_scales(3, 1.0);
   EngineObj = new cqmc::engine::LMYEngine(&vdeps, 
                                           false, // exact sampling
@@ -736,7 +744,12 @@ void QMCFixedSampleLinearOptimize::solveShiftsWithoutLMYEngine(const std::vector
 ///
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #ifdef HAVE_LMY_ENGINE
+// 2017.07.07 JACKI
+int QMCFixedSampleLinearOptimize::lm_iteration=0;
+QMCFixedSampleLinearOptimize::RealType QMCFixedSampleLinearOptimize::omega_shift=0.0; 
 bool QMCFixedSampleLinearOptimize::adaptive_three_shift_run() {
+
+  if (lm_iteration == 0 ) { omega_shift = init_omega_shift; }
 
   // remember what the cost function grads flag was
   const bool saved_grads_flag = this->optTarget->getneedGrads();
@@ -807,8 +820,48 @@ bool QMCFixedSampleLinearOptimize::adaptive_three_shift_run() {
   // reset the engine
   EngineObj->reset();
 
-  // generate samples and compute weights, local energies, and derivative vectors
+  // Ensure that the trial functional logarithm statistics come from the warmup sample we are about to take.
+  // This means that the warmup is done with nodeless guiding turned off, which in principle
+  // could be an issue if it greatly changed the guiding function.
+  // Perhaps we should change the setup to do a second warmup run after nodeless guiding is set up.
+  VMCUpdatePbyPNodeless::reset_tfl();
+
+  // generate samples (possibly using a nodeless guiding function)
   this->engine_start(EngineObj);
+
+  // from the sample, extract what we need for the energy and variance and also the matrix pieces needed for the linear method
+  const Return_t starting_cost = this->engine_process_sample(false);
+  const Return_t init_energy = EngineObj->energy_mean();
+  
+  // 2017.07.07 JACKI
+  const Return_t init_sdev   = EngineObj->energy_sdev();
+
+  std::cout << "update_omega_iter = " << update_omega_iter << std::endl;
+  if (update_omega_iter != -1)
+  {
+    // omega_ideal is the value of omega for which TF=(omega-E)/((omega-E)^2 + sdev) is a minimum
+    double omega_ideal = init_energy - init_sdev;
+    std::cout << "omega_ideal = " << omega_ideal << std::endl;
+
+    // slow _omega update period that starts at the update_omega_iter-th iteration and last for update_steps iterations
+    if ( lm_iteration <= update_omega_iter ) {
+      omega_shift  = init_omega_shift;
+    } else if ( update_omega_iter < lm_iteration && lm_iteration < (update_omega_iter+update_omega_steps) ) {
+      // linear interpolation between init_omega_shift and omega_ideal
+      double scale = ((double) ( lm_iteration - update_omega_iter ))/((double) update_omega_steps );
+      omega_shift = init_omega_shift + (omega_ideal - init_omega_shift)*scale ;
+    } else if ( lm_iteration >= ( update_omega_iter + update_omega_steps ) ) {
+      // if we are past the slow update period, just set omega_shift to be omega_ideal
+      omega_shift = omega_ideal;
+    }
+  } else {
+    omega_shift  = init_omega_shift ;
+  }
+
+  // 2017.07.07 JACKI
+  //if (lm_iteration == 0)
+  std::cout << "lm_iter" << "\t" << "energy" << "\t" << "sdev" << "\t" << "init omega"  << "\t" << "omega" << std::endl;
+  std::cout << lm_iteration << "\t" << init_energy << "\t" << init_sdev << "\t" << init_omega_shift  << "\t" << omega_shift  << std::endl;
 
   // get dimension of the linear method matrices
   N = numParams + 1;
@@ -1042,6 +1095,11 @@ bool QMCFixedSampleLinearOptimize::adaptive_three_shift_run() {
   nTargetSamples = init_num_samp;
 
   //app_log() << "block first second third end " << block_first << block_second << block_third << endl; 
+    
+  // 2017.07.07 JACKI
+  // add to the linear method iteration counter
+  lm_iteration++;
+
   // return whether the cost function's report counter is positive
   return (optTarget->getReportCounter() > 0);
 
