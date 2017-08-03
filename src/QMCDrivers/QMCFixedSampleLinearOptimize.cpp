@@ -839,8 +839,6 @@ bool QMCFixedSampleLinearOptimize::adaptive_three_shift_run() {
   // from the sample, extract what we need for the energy and variance and also the matrix pieces needed for the linear method
   const Return_t starting_cost = this->engine_process_sample(false);
   const Return_t init_energy = EngineObj->energy_mean();
-  
-  // 2017.07.07 JACKI
   const Return_t init_sdev   = EngineObj->energy_sdev();
 
 
@@ -856,6 +854,26 @@ bool QMCFixedSampleLinearOptimize::adaptive_three_shift_run() {
       // linear interpolation between init_omega_shift and omega_ideal
       double scale = ((double) ( lm_iteration - update_omega_iter ))/((double) update_omega_steps );
       omega_shift = init_omega_shift + (omega_ideal - init_omega_shift)*scale ;
+
+      // prepare a variable dependency object with no dependencies
+      formic::VarDeps real_vdeps(numParams, std::vector<double>());
+      vdeps = real_vdeps;
+      EngineObj->get_param(&vdeps,
+                           false, // exact sampling
+                           !targetExcited, 
+                           false, // variable deps use?
+                           false, // eom
+                           false, // ssquare
+                           block_lm, 
+                           12000, 
+                           numParams,
+                           omega_shift,
+                           max_relative_cost_change,
+                           shifts_i.at(central_index), 
+                           shifts_s.at(central_index),
+                           max_param_change,
+                           shift_scales);
+
     } else if ( lm_iteration >= ( update_omega_iter + update_omega_steps ) ) {
       // if we are past the slow update period, just set omega_shift to be omega_ideal
       omega_shift = omega_ideal;
