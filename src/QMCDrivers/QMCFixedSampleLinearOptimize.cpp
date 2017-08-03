@@ -782,6 +782,13 @@ bool QMCFixedSampleLinearOptimize::adaptive_three_shift_run() {
     count++;
   }
 
+
+  app_log() << std::endl
+            << "JACKI HERE I AM! " << std::endl
+            << "lm_iteration = " << lm_iteration << std::endl
+            << "omega_shift  = " << omega_shift  << std::endl
+            << std::endl;
+
   if ( !EngineObj->full_init() ) {
 
     // prepare a variable dependency object with no dependencies
@@ -836,12 +843,11 @@ bool QMCFixedSampleLinearOptimize::adaptive_three_shift_run() {
   // 2017.07.07 JACKI
   const Return_t init_sdev   = EngineObj->energy_sdev();
 
-  std::cout << "update_omega_iter = " << update_omega_iter << std::endl;
+
   if (update_omega_iter != -1)
   {
     // omega_ideal is the value of omega for which TF=(omega-E)/((omega-E)^2 + sdev) is a minimum
     double omega_ideal = init_energy - init_sdev;
-    std::cout << "omega_ideal = " << omega_ideal << std::endl;
 
     // slow _omega update period that starts at the update_omega_iter-th iteration and last for update_steps iterations
     if ( lm_iteration <= update_omega_iter ) {
@@ -858,10 +864,10 @@ bool QMCFixedSampleLinearOptimize::adaptive_three_shift_run() {
     omega_shift  = init_omega_shift ;
   }
 
-  // 2017.07.07 JACKI
-  //if (lm_iteration == 0)
-  std::cout << "lm_iter" << "\t" << "energy" << "\t" << "sdev" << "\t" << "init omega"  << "\t" << "omega" << std::endl;
-  std::cout << lm_iteration << "\t" << init_energy << "\t" << init_sdev << "\t" << init_omega_shift  << "\t" << omega_shift  << std::endl;
+  app_log() << std::endl
+            << "lm_iter" << "\t" << "energy" << "\t" << "sdev" << "\t" << "init omega"  << "\t" << "omega" << std::endl
+            << lm_iteration << "\t" << init_energy << "\t" << init_sdev << "\t" << init_omega_shift  << "\t" << omega_shift  << std::endl
+            << std::endl;
 
   // get dimension of the linear method matrices
   N = numParams + 1;
