@@ -783,12 +783,6 @@ bool QMCFixedSampleLinearOptimize::adaptive_three_shift_run() {
   }
 
 
-  app_log() << std::endl
-            << "JACKI HERE I AM! " << std::endl
-            << "lm_iteration = " << lm_iteration << std::endl
-            << "omega_shift  = " << omega_shift  << std::endl
-            << std::endl;
-
   if ( !EngineObj->full_init() ) {
 
     // prepare a variable dependency object with no dependencies
@@ -842,6 +836,7 @@ bool QMCFixedSampleLinearOptimize::adaptive_three_shift_run() {
   const Return_t init_sdev   = EngineObj->energy_sdev();
 
 
+  // JACKI
   if (update_omega_iter != -1)
   {
     // omega_ideal is the value of omega for which TF=(omega-E)/((omega-E)^2 + sdev) is a minimum
@@ -855,25 +850,6 @@ bool QMCFixedSampleLinearOptimize::adaptive_three_shift_run() {
       double scale = ((double) ( lm_iteration - update_omega_iter ))/((double) update_omega_steps );
       omega_shift = init_omega_shift + (omega_ideal - init_omega_shift)*scale ;
 
-      // prepare a variable dependency object with no dependencies
-      formic::VarDeps real_vdeps(numParams, std::vector<double>());
-      vdeps = real_vdeps;
-      EngineObj->get_param(&vdeps,
-                           false, // exact sampling
-                           !targetExcited, 
-                           false, // variable deps use?
-                           false, // eom
-                           false, // ssquare
-                           block_lm, 
-                           12000, 
-                           numParams,
-                           omega_shift,
-                           max_relative_cost_change,
-                           shifts_i.at(central_index), 
-                           shifts_s.at(central_index),
-                           max_param_change,
-                           shift_scales);
-
     } else if ( lm_iteration >= ( update_omega_iter + update_omega_steps ) ) {
       // if we are past the slow update period, just set omega_shift to be omega_ideal
       omega_shift = omega_ideal;
@@ -882,10 +858,25 @@ bool QMCFixedSampleLinearOptimize::adaptive_three_shift_run() {
     omega_shift  = init_omega_shift ;
   }
 
-  app_log() << std::endl
-            << "lm_iter" << "\t" << "energy" << "\t" << "sdev" << "\t" << "init omega"  << "\t" << "omega" << std::endl
-            << lm_iteration << "\t" << init_energy << "\t" << init_sdev << "\t" << init_omega_shift  << "\t" << omega_shift  << std::endl
-            << std::endl;
+  // prepare a variable dependency object with no dependencies
+  formic::VarDeps real_vdeps(numParams, std::vector<double>());
+  vdeps = real_vdeps;
+  EngineObj->get_param(&vdeps,
+                       false, // exact sampling
+                       !targetExcited, 
+                       false, // variable deps use?
+                       false, // eom
+                       false, // ssquare
+                       block_lm, 
+                       12000, 
+                       numParams,
+                       omega_shift,
+                       max_relative_cost_change,
+                       shifts_i.at(central_index), 
+                       shifts_s.at(central_index),
+                       max_param_change,
+                       shift_scales);
+
 
   // get dimension of the linear method matrices
   N = numParams + 1;
