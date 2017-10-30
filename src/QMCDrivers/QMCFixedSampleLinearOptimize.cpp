@@ -67,7 +67,7 @@ vdeps(1,std::vector<double>()),
   StabilizerMethod("best"), GEVSplit("no"), stepsize(0.25), doAdaptiveThreeShift(false),
   targetExcitedStr("no"), targetExcited(false), block_lmStr("no"), block_lm(false),
   bestShift_i(-1.0), bestShift_s(-1.0), shift_i_input(0.01), shift_s_input(1.00), doOneShiftOnly(false),
-  num_shifts(3), nblocks(1), nolds(1), nkept(1), nsamp_comp(0), omega_shift(0.0), init_omega_shift(0.0),
+  num_shifts(3), nblocks(1), nolds(1), nkept(1), nsamp_comp(0), init_omega_shift(0.0),
   max_param_change(0.3), update_omega_iter(-1), update_omega_steps(1),
   max_relative_cost_change(10.0), block_first(true), block_second(false), block_third(false)
 {
@@ -821,20 +821,15 @@ bool QMCFixedSampleLinearOptimize::adaptive_three_shift_run() {
   // reset the engine
   EngineObj->reset();
 
-  // Ensure that the trial functional logarithm statistics come from the warmup sample we are about to take.
-  // This means that the warmup is done with nodeless guiding turned off, which in principle
-  // could be an issue if it greatly changed the guiding function.
-  // Perhaps we should change the setup to do a second warmup run after nodeless guiding is set up.
-  VMCUpdatePbyPNodeless::reset_tfl();
-
-  // generate samples (possibly using a nodeless guiding function)
+  // generate samples and compute weights, local energies, and derivative vectors
   this->engine_start(EngineObj);
 
-  // from the sample, extract what we need for the energy and variance and also the matrix pieces needed for the linear method
-  const Return_t starting_cost = this->engine_process_sample(false);
+  // have the cost function prepare derivative vectors
+  EngineObj->energy_target_compute();
+
+  const Return_t starting_cost = EngineObj->target_value();
   const Return_t init_energy = EngineObj->energy_mean();
   const Return_t init_sdev   = EngineObj->energy_sdev();
-
 
   // JACKI
   if (update_omega_iter != -1)
@@ -858,7 +853,7 @@ bool QMCFixedSampleLinearOptimize::adaptive_three_shift_run() {
     omega_shift  = init_omega_shift ;
   }
 
-  // prepare a variable dependency object with no dependencies
+  // Update omega by calling get_param again
   formic::VarDeps real_vdeps(numParams, std::vector<double>());
   vdeps = real_vdeps;
   EngineObj->get_param(&vdeps,
@@ -877,15 +872,9 @@ bool QMCFixedSampleLinearOptimize::adaptive_three_shift_run() {
                        max_param_change,
                        shift_scales);
 
-
   // get dimension of the linear method matrices
   N = numParams + 1;
 
-  // have the cost function prepare derivative vectors
-  EngineObj->energy_target_compute();
-  const Return_t starting_cost = EngineObj->target_value();
-  const Return_t init_energy = EngineObj->energy_mean();
-  
   // print out the initial energy
   app_log() << std::endl
             << "*************************************************************************************************" << std::endl
