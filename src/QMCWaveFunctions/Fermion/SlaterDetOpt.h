@@ -113,11 +113,21 @@ class SlaterDetOpt : public DiracDeterminantBase {
     /// \brief  vector of active rotation indices, stored in pairs with the first element of the pair less than the second
     std::vector<std::pair<int,int> > m_act_rot_inds;
 
+    /// \brief  the same as the above, but this holds all possible pairs of occupied with virtual orbital indices
+    ///         this is used to allow a general initial rotation, and then to turn some rotation parameters off afterwards
+    //std::vector<std::pair<int,int> > m_all_rot_inds;
+
+    /// \brief  vector of active rotation indices - specifically those that are in m_all_rot_inds but not m_act_rot_inds
+    std::vector<std::pair<int,int> > m_inact_rot_inds;
+
     /// \brief  matrix of derivatives of Log(Psi) w.r.t. the m_nlc by m_nlc orbital rotation matrix C
     std::vector<RealType> m_pder_mat;
 
     /// \brief  matrix of derivatives of (H Psi) / Psi w.r.t. the m_nlc by m_nlc orbital rotation matrix C
     std::vector<RealType> m_hder_mat;
+
+    /// \brief  list of inactive orbital rotation parameters. This will hold the initial values of those inactive ones
+    opt_variables_type myInactVars;
 
   // private member functions
   private:
@@ -155,7 +165,8 @@ class SlaterDetOpt : public DiracDeterminantBase {
 
     void set_optimizable_rotation_ranges(const int istart, const int iend, const int jstart, const int jend);
 
-    void buildOptVariables(std::vector<RealType>& input_params, bool params_supplied, bool print_vars);
+    void buildOptVariables(std::vector<RealType>& input_params, bool params_supplied,
+                           std::vector<int>& allowed_params, bool allowed_supplied, bool print_vars);
 
     void checkInVariables(opt_variables_type& active);
 

@@ -33,6 +33,7 @@ SlaterDetOpt::SlaterDetOpt(ParticleSet & ptcl, SPOSetBase * spo_ptr, const int u
   , m_nmo(spo_ptr->size())
   , m_first_var_pos(-1)
   , m_act_rot_inds()
+  , m_inact_rot_inds()
 {
   targetPtcl = &ptcl;
 
@@ -46,23 +47,8 @@ SlaterDetOpt::SlaterDetOpt(ParticleSet & ptcl, SPOSetBase * spo_ptr, const int u
   // make sure we didn't start with a bad m_nlc
   check_index_sanity();
 
-  // by default set all rotations to be active
-  m_act_rot_inds.resize( m_nlc * ( m_nlc - 1 ) / 2 );
-  int rots_recorded = 0;
-  for (int j = 1; j < m_nlc; j++)
-  for (int i = 0; i < j; i++)
-    m_act_rot_inds.at(rots_recorded++) = std::pair<int,int>(i,j);
-  if ( m_act_rot_inds.size() != rots_recorded )
-    throw std::runtime_error("wrong number of active rotations recorded in SlaterDetOpt constructor.");
-
-  // make sure we didn't do something stupid
-  check_index_sanity();
-
   // prepare matrices that will hold derivatives wrt orbital rotations
   this->initialize_matrices();
-
-  // add this determinant's contribution to the orbital linear combinations' derivatives
-  set_optimizable_rotation_ranges(0, m_nel, m_nel, m_nmo);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -683,13 +669,21 @@ void SlaterDetOpt::checkOutVariables(const opt_variables_type& active) {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void SlaterDetOpt::resetParameters(const opt_variables_type& active)
 {
-  // read out the parameters that define the rotation into an antisymmetric matrix
+  // read in the *active* parameters that define the rotation into an antisymmetric matrix
   std::vector<RealType> rot_mat(m_nlc*m_nlc, 0.0);
   for (int i = 0; i < m_act_rot_inds.size(); i++) {
     const int p = m_act_rot_inds.at(i).first;
     const int q = m_act_rot_inds.at(i).second;
-    //const RealType x = active[i + m_first_var_pos] - myVars[i];
     const RealType x = active[i + m_first_var_pos];
+    rot_mat[p+q*m_nlc] =  x;
+    rot_mat[q+p*m_nlc] = -x;
+  }
+
+  // now read in the *inactive* parameters
+  for (int i = 0; i < m_inact_rot_inds.size(); i++) {
+    const int p = m_inact_rot_inds.at(i).first;
+    const int q = m_inact_rot_inds.at(i).second;
+    const RealType x = myInactVars[i];
     rot_mat[p+q*m_nlc] =  x;
     rot_mat[q+p*m_nlc] = -x;
   }
@@ -1152,50 +1146,70 @@ void SlaterDetOpt::set_optimizable_rotation_ranges(const int istart, const int i
 ///                                were supplied by the user
 /// \param[in]    params_supplied  true if parameters are provided in input_params, false if
 ///                                input_params is empty
+/// \param[in]    allowed_params   a list of of 0's and 1's - 1 indicates that the corresponding
+///                                parameter should be optimizable, 0 that it should not be
+/// \param[in]    allowed_supplied true if allowed_params is not an empty list
+///                                input_params is empty
 /// \param[in]    print_vars       if true, then print out the initialized values of the variables
 ///
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void SlaterDetOpt::buildOptVariables(std::vector<RealType>& input_params,
-                       bool params_supplied, bool print_vars) {
+                       bool params_supplied, std::vector<int>& allowed_params,
+                       bool allowed_supplied, bool print_vars) {
 
-  int p, q;
-  int nparams_active = m_act_rot_inds.size();
+  // build m_act_rot_inds and m_inact_rot_inds
+  int rots_recorded = 0;
+  RealType param = 0.0;
+  for (int i = 0; i < m_nel; i++) {
+    for (int j = m_nel; j < m_nmo; j++) {
 
-  if (params_supplied) {
-    int nparams_input = input_params.size();
-    if (nparams_input != nparams_active)
-      throw std::runtime_error("Number of parameters provided for orbital rotations "
-                               "is not consistent with the expected number.");
-  }
+      // Create the name for this optimizable parameter
+      std::stringstream sstr;
+      sstr << Phi->objectName
+           << "_orb_rot_"
+           << ( i <   10 ? "0" : "" )
+           << ( i <  100 ? "0" : "" )
+           << ( i < 1000 ? "0" : "" )
+           << i
+           << "_"
+           << ( j <   10 ? "0" : "" )
+           << ( j <  100 ? "0" : "" )
+           << ( j < 1000 ? "0" : "" )
+           << j;
 
-  for (int i=0; i< nparams_active; i++)
-  {
-    p = m_act_rot_inds.at(i).first;
-    q = m_act_rot_inds.at(i).second;
-    std::stringstream sstr;
-    sstr << Phi->objectName
-         << "_orb_rot_"
-         << ( p <   10 ? "0" : "" )
-         << ( p <  100 ? "0" : "" )
-         << ( p < 1000 ? "0" : "" )
-         << p
-         << "_"
-         << ( q <   10 ? "0" : "" )
-         << ( q <  100 ? "0" : "" )
-         << ( q < 1000 ? "0" : "" )
-         << q;
+      // Store the current parameter value for multiple uses below
+      if (params_supplied) {
+        param = input_params.at(rots_recorded);
+      } else {
+        param = 0.0;
+      }
 
-    // If the user input parameteres, use those. Otherwise, initialize the
-    // parameter to zero.
-    if (params_supplied) {
-      myVars.insert(sstr.str(), input_params[i]);
-    } else {
-      myVars.insert(sstr.str(), 0.0);
+      if (allowed_supplied)
+      {
+        // If the user has supplied a list of which parameters to be optimized
+        // then check if this is one of those be optimized
+        if (allowed_params.at(rots_recorded) == 1) {
+          // Add to the list of active rotations
+          m_act_rot_inds.push_back(std::pair<int,int>(i,j));
+          myVars.insert(sstr.str(), param);
+        } else {
+          // Add to the list of inactive rotations
+          m_inact_rot_inds.push_back(std::pair<int,int>(i,j));
+          myInactVars.insert(sstr.str(), param);
+        }
+      }
+      else
+      {
+        // If allowed_supplied is false, then all parameters are to be optimized
+        m_act_rot_inds.push_back(std::pair<int,int>(i,j));
+        myVars.insert(sstr.str(), param);
+      }
+      rots_recorded++;
     }
   }
-
+      
   if (print_vars) {
-    // Print the current values of all the optimisable parameters,
+    // Print the current values of all the optimizable parameters,
     // hopefully with correct formatting.
     app_log() << std::string(16,' ') << "Parameter name" << std::string(15,' ') << "Value\n";
     myVars.print(app_log());
@@ -1206,13 +1220,20 @@ void SlaterDetOpt::buildOptVariables(std::vector<RealType>& input_params,
   // is a bit too specialized for what we want to do here. So we just
   // rewrite the specific code we want, rather than calling that routine.
 
-  // Read out the parameters that define the rotation into an antisymmetric matrix
+  // Read out the *active* parameters that define the rotation into an antisymmetric matrix
   std::vector<RealType> rot_mat(m_nlc*m_nlc, 0.0);
   for (int i = 0; i < m_act_rot_inds.size(); i++) {
     const int p = m_act_rot_inds.at(i).first;
     const int q = m_act_rot_inds.at(i).second;
     rot_mat[p+q*m_nlc] =  myVars[i];
     rot_mat[q+p*m_nlc] = -myVars[i];
+  }
+  // now read the *inactive* parameters
+  for (int i = 0; i < m_inact_rot_inds.size(); i++) {
+    const int p = m_inact_rot_inds.at(i).first;
+    const int q = m_inact_rot_inds.at(i).second;
+    rot_mat[p+q*m_nlc] =  myInactVars[i];
+    rot_mat[q+p*m_nlc] = -myInactVars[i];
   }
   // Exponentiate antisymmetric matrix to get the unitary rotation.
   this->exponentiate_matrix(m_nlc, &rot_mat.at(0));

@@ -591,6 +591,9 @@ bool SlaterDetBuilder::putDeterminant(xmlNodePtr cur, int spin_group, bool slate
       std::vector<RealType> params;
       bool params_supplied = false;
 
+      std::vector<int> allowed_params;
+      bool allowed_supplied = false;
+
       // Search for the XML tag called "opt_vars", which will specify
       // initial values for the determinant's optimiziable variables.
       std::string subdet_name;
@@ -599,6 +602,10 @@ bool SlaterDetBuilder::putDeterminant(xmlNodePtr cur, int spin_group, bool slate
         if ( subdet_name == "opt_vars" ) {
           params_supplied = true;
           putContent(params, subdet_cur);
+        }
+        if ( subdet_name == "allowed_params" ) {
+          allowed_supplied = true;
+          putContent(allowed_params, subdet_cur);
         }
       }
 
@@ -623,7 +630,7 @@ bool SlaterDetBuilder::putDeterminant(xmlNodePtr cur, int spin_group, bool slate
       SlaterDetOpt * const retval = new SlaterDetOpt(targetPtcl, psi, spin_group);
 
       // load extra parameters for SlaterDetOpt
-      retval->buildOptVariables(params, params_supplied, true);
+      retval->buildOptVariables(params, params_supplied, allowed_params, allowed_supplied, true);
 
       adet = retval;
       adet->Optimizable = true;
