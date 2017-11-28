@@ -170,6 +170,14 @@ bool WaveFunctionFactory::build(xmlNodePtr cur, bool buildtree)
   dummy.resetIndex();
   targetPsi->checkOutVariables(dummy);
   targetPsi->resetParameters(dummy);
+
+// synch all inactive parameters.
+  opt_variables_type dummy_inact;
+  targetPsi->checkInInactiveVariables(dummy_inact);
+  dummy_inact.resetIndex();
+  targetPsi->checkOutInactiveVariables(dummy_inact);
+  targetPsi->resetInactiveParameters(dummy_inact);
+
   return success;
 }
 

@@ -15,6 +15,7 @@
 
 #include "QMCWaveFunctions/Fermion/DiracDeterminantBase.h"
 #include <QMCWaveFunctions/SPOSetBase.h>
+#include "Message/MPIObjectBase.h"
 
 namespace qmcplusplus {
 
@@ -109,13 +110,10 @@ class SlaterDetOpt : public DiracDeterminantBase {
 
     /// \brief  position of the first of this object's optimizable variables in the overall list of optimizable variables
     int m_first_var_pos;
+    int m_first_var_pos_inactive;
 
     /// \brief  vector of active rotation indices, stored in pairs with the first element of the pair less than the second
     std::vector<std::pair<int,int> > m_act_rot_inds;
-
-    /// \brief  the same as the above, but this holds all possible pairs of occupied with virtual orbital indices
-    ///         this is used to allow a general initial rotation, and then to turn some rotation parameters off afterwards
-    //std::vector<std::pair<int,int> > m_all_rot_inds;
 
     /// \brief  vector of active rotation indices - specifically those that are in m_all_rot_inds but not m_act_rot_inds
     std::vector<std::pair<int,int> > m_inact_rot_inds;
@@ -125,9 +123,6 @@ class SlaterDetOpt : public DiracDeterminantBase {
 
     /// \brief  matrix of derivatives of (H Psi) / Psi w.r.t. the m_nlc by m_nlc orbital rotation matrix C
     std::vector<RealType> m_hder_mat;
-
-    /// \brief  list of inactive orbital rotation parameters. This will hold the initial values of those inactive ones
-    opt_variables_type myInactVars;
 
   // private member functions
   private:
@@ -173,6 +168,10 @@ class SlaterDetOpt : public DiracDeterminantBase {
     void checkOutVariables(const opt_variables_type& active);
 
     void resetParameters(const opt_variables_type& active);
+
+    void checkInInactiveVariables(opt_variables_type& inactive);
+    void checkOutInactiveVariables(const opt_variables_type& inactive);
+    void resetInactiveParameters(const opt_variables_type& inactive);
 
     void reportStatus(std::ostream& os);
 

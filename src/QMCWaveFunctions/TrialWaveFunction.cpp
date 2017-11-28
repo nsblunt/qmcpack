@@ -595,6 +595,24 @@ void TrialWaveFunction::resetParameters(const opt_variables_type& active)
     Z[i]->resetParameters(active);
 }
 
+void TrialWaveFunction::checkInInactiveVariables(opt_variables_type& active)
+{
+  for (int i=0; i<Z.size(); i++)
+    Z[i]->checkInInactiveVariables(active);
+}
+
+void TrialWaveFunction::checkOutInactiveVariables(const opt_variables_type& inactive)
+{
+  for (int i=0; i<Z.size(); i++)
+    Z[i]->checkOutInactiveVariables(inactive);
+}
+
+void TrialWaveFunction::resetInactiveParameters(const opt_variables_type& inactive)
+{
+  for (int i=0; i<Z.size(); i++)
+    Z[i]->resetInactiveParameters(inactive);
+}
+
 void TrialWaveFunction::reportStatus(std::ostream& os)
 {
   for (int i=0; i<Z.size(); i++)

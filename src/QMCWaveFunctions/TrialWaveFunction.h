@@ -210,6 +210,11 @@ public:
   void checkOutVariables(const opt_variables_type& o);
   ///reset member data
   void resetParameters(const opt_variables_type& active);
+
+  void checkInInactiveVariables(opt_variables_type& o);
+  void checkOutInactiveVariables(const opt_variables_type& o);
+  void resetInactiveParameters(const opt_variables_type& inactive);
+
   /** print out state of the trial wavefunction
    */
   void reportStatus(std::ostream& os);

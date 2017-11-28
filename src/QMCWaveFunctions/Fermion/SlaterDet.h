@@ -81,6 +81,10 @@ public:
   ///reset all the Dirac determinants, Optimizable is true
   virtual void resetParameters(const opt_variables_type& optVariables);
 
+  virtual void checkInInactiveVariables(opt_variables_type& inactive);
+  virtual void checkOutInactiveVariables(const opt_variables_type& inactive);
+  virtual void resetInactiveParameters(const opt_variables_type& optVariables);
+
   void reportStatus(std::ostream& os);
 
   virtual void resetTargetParticleSet(ParticleSet& P);

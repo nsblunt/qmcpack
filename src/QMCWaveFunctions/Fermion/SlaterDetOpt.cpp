@@ -32,6 +32,7 @@ SlaterDetOpt::SlaterDetOpt(ParticleSet & ptcl, SPOSetBase * spo_ptr, const int u
   , m_up_or_down(up_or_down)
   , m_nmo(spo_ptr->size())
   , m_first_var_pos(-1)
+  , m_first_var_pos_inactive(-1)
   , m_act_rot_inds()
   , m_inact_rot_inds()
 {
@@ -109,6 +110,7 @@ OrbitalBasePtr SlaterDetOpt::makeClone(ParticleSet& tqp) const {
   clone->Optimizable=Optimizable;
   clone->myVars=myVars;
   clone->m_first_var_pos = m_first_var_pos;
+  clone->m_first_var_pos_inactive = m_first_var_pos_inactive;
 
   return clone;
 }
@@ -127,6 +129,7 @@ DiracDeterminantBase* SlaterDetOpt::makeCopy(SPOSetBasePtr spo) const
   copy->myVars=myVars;
   copy->Optimizable=Optimizable;
   copy->m_first_var_pos = m_first_var_pos;
+  copy->m_first_var_pos_inactive = m_first_var_pos_inactive;
 
   return copy;
 }
@@ -633,6 +636,12 @@ void SlaterDetOpt::checkInVariables(opt_variables_type& active) {
 
 }
 
+void SlaterDetOpt::checkInInactiveVariables(opt_variables_type& inactive)
+{
+  inactive.insertFrom(this->myInactVars);
+  m_first_var_pos_inactive = -1;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// \brief  Records the positions of this object's optimizable variables in the supplied overall
 ///         list of optimizable variables, checks that the variables are stored contiguously,
@@ -658,6 +667,15 @@ void SlaterDetOpt::checkOutVariables(const opt_variables_type& active) {
   // record the position of my first variable
   if ( myVars.size() > 0 )
     m_first_var_pos = myVars.where(0);
+}
+
+void SlaterDetOpt::checkOutInactiveVariables(const opt_variables_type& inactive)
+{
+  // record the positions of this object's optimizable variables within the overall list of optimizable variables
+  myInactVars.getIndex(inactive);
+  // record the position of my first variable
+  if ( myInactVars.size() > 0 )
+    m_first_var_pos_inactive = myInactVars.where(0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -697,9 +715,13 @@ void SlaterDetOpt::resetParameters(const opt_variables_type& active)
   // Store the orbital rotations parameters internally in myVars
   for (int i = 0; i < m_act_rot_inds.size(); i++)
     myVars[i] = active[i + m_first_var_pos];
+}
 
-  //if (false)
-  //  this->print_B();
+void SlaterDetOpt::resetInactiveParameters(const opt_variables_type& inactive)
+{
+  // Store the orbital rotations parameters internally in myVars
+  for (int i = 0; i < m_inact_rot_inds.size(); i++)
+    myInactVars[i] = inactive[i + m_first_var_pos_inactive];
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -57,6 +57,15 @@ namespace qmcplusplus {
     d_vars.resetIndex();
     m_wfn_xpd->checkOutVariables(d_vars);
 
+    // Same as above but for inactive parameters.
+    m_wfn_xmd->checkInInactiveVariables(x_vars_inact);
+    x_vars_inact.resetIndex();
+    m_wfn_xmd->checkOutInactiveVariables(x_vars_inact);
+
+    m_wfn_xpd->checkInInactiveVariables(d_vars_inact);
+    d_vars_inact.resetIndex();
+    m_wfn_xpd->checkOutInactiveVariables(d_vars_inact);
+
     if (singlet_loc)
       singlet = true;
     else
@@ -89,6 +98,22 @@ namespace qmcplusplus {
       }
     }
 
+    //----Inactive-------------------------------------------
+
+    opt_variables_type xpd_vars_inact;
+    xpd_vars_inact.insertFromSum(x_vars_inact,d_vars_inact);
+    // Make it so that m_wfn_xpd holds the parameters
+    // x+d, where as before it just held d.
+    m_wfn_xpd->resetInactiveParameters(xpd_vars_inact);
+
+    opt_variables_type xmd_vars_inact;
+    xmd_vars_inact.insertFromDiff(x_vars_inact,d_vars_inact);
+    // Make it so that m_wfn_xmd holds the parameters
+    // x-d, where as before it just held x.
+    m_wfn_xmd->resetInactiveParameters(xmd_vars_inact);
+
+    //----Active----------------------------------------------
+
     opt_variables_type xpd_vars;
     xpd_vars.insertFromSum(x_vars,d_vars);
     // Make it so that m_wfn_xpd holds the parameters
@@ -100,6 +125,8 @@ namespace qmcplusplus {
     // Make it so that m_wfn_xmd holds the parameters
     // x-d, where as before it just held x.
     m_wfn_xmd->resetParameters(xmd_vars);
+
+    //-------------------------------------------------------
 
     // Initialize G and L objects for both wave functions.
     m_wfn_xpd->G.resize(P.G.size());

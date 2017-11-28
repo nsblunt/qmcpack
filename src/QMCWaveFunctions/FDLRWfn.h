@@ -40,6 +40,12 @@ namespace qmcplusplus {
     // List of variables for the delta or "d" parameters
     opt_variables_type d_vars;
 
+    // List of inactive variables for the "x" parameters
+    opt_variables_type x_vars_inact;
+
+    // List of inactive variables for the delta or "d" parameters
+    opt_variables_type d_vars_inact;
+
     // List of variables for the "x" parameters
     // The difference between this and x_vars is that the names for the
     // variables in x_vars_driver have "x_" appended to the start. This is how

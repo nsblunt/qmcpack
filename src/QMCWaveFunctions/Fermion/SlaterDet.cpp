@@ -80,6 +80,16 @@ void SlaterDet::checkInVariables(opt_variables_type& active)
     }
 }
 
+void SlaterDet::checkInInactiveVariables(opt_variables_type& inactive)
+{
+  myInactVars.clear();
+  for (int i = 0; i < Dets.size(); i++)
+  {
+    Dets[i]->checkInInactiveVariables(inactive);
+    Dets[i]->checkInInactiveVariables(myInactVars);
+  }
+}
+
 void SlaterDet::checkOutVariables(const opt_variables_type& active)
 {
   myVars.clear();
@@ -92,12 +102,29 @@ void SlaterDet::checkOutVariables(const opt_variables_type& active)
   myVars.getIndex(active);
 }
 
+void SlaterDet::checkOutInactiveVariables(const opt_variables_type& inactive)
+{
+  myInactVars.clear();
+  for (int i = 0; i < Dets.size(); i++)
+  {
+    Dets[i]->checkOutInactiveVariables(inactive);
+    myInactVars.insertFrom(Dets[i]->myInactVars);
+  }
+  myInactVars.getIndex(inactive);
+}
+
 ///reset all the Dirac determinants, Optimizable is true
 void SlaterDet::resetParameters(const opt_variables_type& active)
 {
   if (Optimizable)
     for (int i = 0; i < Dets.size(); i++)
       Dets[i]->resetParameters(active);
+}
+
+void SlaterDet::resetInactiveParameters(const opt_variables_type& inactive)
+{
+  for (int i = 0; i < Dets.size(); i++)
+    Dets[i]->resetInactiveParameters(inactive);
 }
 
 void SlaterDet::reportStatus(std::ostream& os)

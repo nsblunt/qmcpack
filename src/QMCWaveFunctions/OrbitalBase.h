@@ -145,6 +145,7 @@ struct OrbitalBase: public QMCTraits
   std::string OrbitalName;
   ///list of variables this orbital handles
   opt_variables_type myVars;
+  opt_variables_type myInactVars;
 
   /// default constructor
   OrbitalBase();
@@ -193,6 +194,10 @@ struct OrbitalBase: public QMCTraits
   /** reset the parameters during optimizations
    */
   virtual void resetParameters(const opt_variables_type& active)=0;
+
+  virtual void checkInInactiveVariables(opt_variables_type& inactive) {};
+  virtual void checkOutInactiveVariables(const opt_variables_type& inactive) {};
+  virtual void resetInactiveParameters(const opt_variables_type& inactive) {};
 
   /** print the state, e.g., optimizables */
   virtual void reportStatus(std::ostream& os)=0;
