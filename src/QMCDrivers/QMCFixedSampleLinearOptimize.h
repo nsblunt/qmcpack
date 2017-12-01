@@ -132,8 +132,19 @@ private:
   int nkept;
   ///number of samples to do in correlated sampling part
   int nsamp_comp; 
+
+  // 2017.07.07 JACKI
   ///the shift to use when targeting an excited state
-  RealType omega_shift;
+  static RealType omega_shift;
+  ///the initial shift to use when targeting an excited state - given in input file
+  RealType init_omega_shift;
+  ///counter for number of linear method iterations have been completed - for updating omega_shift
+  static int lm_iteration;
+  ///the iteration where the omega_shift parameter starts being updated
+  int update_omega_iter;
+  ///the number of iterations over which omega_shift is updated
+  int update_omega_steps;
+
   ///whether to do the first part of block lm
   bool block_first;
   ///whether to do the second part of block lm
