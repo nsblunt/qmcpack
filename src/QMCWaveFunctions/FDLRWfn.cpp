@@ -861,6 +861,10 @@ namespace qmcplusplus {
       std::vector<FDLRWfn::RealType>& dlogpsi, std::vector<FDLRWfn::RealType>& dhpsioverpsi)
   {
 
+    if ((! opt_d_vars) && (! opt_x_vars)) {
+      return;
+    }
+
     // The number of "x" parameters (which is also the number of "d"
     // parameters, hence the name - it is *not* the total number of both
     // sets of parameters together).
