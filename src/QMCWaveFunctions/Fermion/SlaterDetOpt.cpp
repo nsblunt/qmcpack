@@ -148,11 +148,11 @@ SlaterDetOpt::~SlaterDetOpt() { }
 void SlaterDetOpt::initialize_matrices() {
 
   // initialize matrix for Log(Psi) derivatives
-  m_pder_mat.resize(m_nlc * m_nlc);
+  m_pder_mat.resize(m_nel * m_nlc);
   std::fill(m_pder_mat.begin(), m_pder_mat.end(), 0.0);
 
   // initialize matrix for ( H Psi ) / Psi derivatives
-  m_hder_mat.resize(m_nlc * m_nlc);
+  m_hder_mat.resize(m_nel * m_nlc);
   std::fill(m_hder_mat.begin(), m_hder_mat.end(), 0.0);
 
 }
@@ -221,11 +221,11 @@ void SlaterDetOpt::resetTargetParticleSet(ParticleSet& P) {
   m_orb_val_vec.resize(m_nel);
   m_orb_der_vec.resize(m_nel);
   m_orb_lap_vec.resize(m_nel);
-  m_dp0.resize(  m_nel, m_nmo);
-  m_dh0.resize(  m_nel, m_nmo);
-  m_dh1.resize(3*m_nel, m_nmo);
-  m_dh2.resize(  m_nel, m_nmo);
-  m_work.resize( std::max( size_t(m_dh1.size()), size_t(std::max(m_nel, 10) * m_nel + m_nel * m_nel)) );
+  m_dp0.resize(  m_nel, m_nel);
+  m_dh0.resize(  m_nel, m_nel);
+  m_dh1.resize(3*m_nel, m_nel);
+  m_dh2.resize(  m_nel, m_nel);
+  m_work.resize( std::max( size_t(3*m_nel*m_nmo), size_t(std::max(m_nel, 10) * m_nel + m_nel * m_nel)) );
   m_pivot.resize(m_nel);
 
   // ensure some of the matrices are filled with zeros
@@ -783,12 +783,12 @@ void SlaterDetOpt::add_derivatives(const int nl,
   }
 
   // ensure orbital derivative matrices are the correct size
-  if ( m_pder_mat.size() != nl * nl ) {
+  if ( m_pder_mat.size() != np * nl ) {
     std::stringstream error_msg;
     error_msg << "nl (" << nl << ") does not match size of m_pder_mat (" << m_pder_mat.size() << ") in add_derivatives";
     throw std::runtime_error(error_msg.str());
   }
-  if ( m_hder_mat.size() != nl * nl ) {
+  if ( m_hder_mat.size() != np * nl ) {
     std::stringstream error_msg;
     error_msg << "nl (" << nl << ") does not match size of m_hder_mat (" << m_hder_mat.size() << ") in add_derivatives";
     throw std::runtime_error(error_msg.str());
@@ -799,13 +799,13 @@ void SlaterDetOpt::add_derivatives(const int nl,
   //for (int i = 0; i < nl; i++)
   //  for (int k = 0; k < np; k++)
   //    m_pder_mat.at(i+j*nl) += dp0[i+k*nl] * Bchi[j+k*nl];
-  BLAS::gemm('N', 'T', nl, nl, np, RealType(1.0), dp0, nl, Bchi, nl, RealType(1.0), &m_pder_mat.at(0), nl);
+  BLAS::gemm('N', 'T', np, nl, np, RealType(1.0), dp0, np, Bchi, nl, RealType(1.0), &m_pder_mat.at(0), np);
 
   // compute products of ( H Psi ) / Psi derivatives with linear combination values and their derivatives and add results to energy derivatives w.r.t. the matrix C
-  BLAS::gemm('N', 'T', nl, nl, np, RealType(1.0), dh0, nl, Bchi, nl, RealType(1.0), &m_hder_mat.at(0), nl);
+  BLAS::gemm('N', 'T', np, nl, np, RealType(1.0), dh0, np, Bchi, nl, RealType(1.0), &m_hder_mat.at(0), np);
   for (int i = 0; i < 3; i++)
-    BLAS::gemm('N', 'T', nl, nl, np, RealType(1.0), dh1+i*nl*np, nl, dBchi+i*nl*np, nl, RealType(1.0), &m_hder_mat.at(0), nl);
-  BLAS::gemm('N', 'T', nl, nl, np, RealType(1.0), dh2, nl, d2Bchi, nl, RealType(1.0), &m_hder_mat.at(0), nl);
+    BLAS::gemm('N', 'T', np, nl, np, RealType(1.0), dh1+i*np*np, np, dBchi+i*nl*np, nl, RealType(1.0), &m_hder_mat.at(0), np);
+  BLAS::gemm('N', 'T', np, nl, np, RealType(1.0), dh2, np, d2Bchi, nl, RealType(1.0), &m_hder_mat.at(0), np);
 
 }
 
@@ -844,15 +844,15 @@ void SlaterDetOpt::add_grad_derivatives(const int nl,
   }
 
   // ensure orbital derivative matrices are the correct size
-  if ( m_hder_mat.size() != nl * nl ) {
+  if ( m_hder_mat.size() != np * nl ) {
     std::stringstream error_msg;
     error_msg << "nl (" << nl << ") does not match size of m_hder_mat (" << m_hder_mat.size() << ") in LCOrbitalSetOptTrialFunc::add_grad_derivatives";
     throw std::runtime_error(error_msg.str());
   }
 
-  BLAS::gemm('N', 'T', nl, nl, np, RealType(1.0), dh0, nl, Bchi, nl, RealType(1.0), &m_hder_mat.at(0), nl);
+  BLAS::gemm('N', 'T', np, nl, np, RealType(1.0), dh0, np, Bchi, nl, RealType(1.0), &m_hder_mat.at(0), np);
   for (int i = 0; i < 3; i++)
-    BLAS::gemm('N', 'T', nl, nl, np, RealType(1.0), dh1+i*nl*np, nl, dBchi+i*nl*np, nl, RealType(1.0), &m_hder_mat.at(0), nl);
+    BLAS::gemm('N', 'T', np, nl, np, RealType(1.0), dh1+i*np*np, np, dBchi+i*nl*np, nl, RealType(1.0), &m_hder_mat.at(0), np);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1029,8 +1029,8 @@ void SlaterDetOpt::evaluateDerivatives(ParticleSet& P,
   for (int i = 0; i < m_act_rot_inds.size(); i++) {
     const int p = m_act_rot_inds.at(i).first;
     const int q = m_act_rot_inds.at(i).second;
-    dlogpsi.at(m_first_var_pos+i) += m_pder_mat.at(p+q*m_nlc) - m_pder_mat.at(q+p*m_nlc);
-    dhpsioverpsi.at(m_first_var_pos+i) += m_hder_mat.at(p+q*m_nlc) - m_hder_mat.at(q+p*m_nlc);
+    dlogpsi.at(m_first_var_pos+i) += m_pder_mat.at(p+q*m_nel);// - m_pder_mat.at(q+p*m_nlc);
+    dhpsioverpsi.at(m_first_var_pos+i) += m_hder_mat.at(p+q*m_nel);// - m_hder_mat.at(q+p*m_nlc);
     if ( false ) {
       std::vector<char> buff(1000, ' ');
       const int len = std::sprintf(&buff[0], " p = %4i   q = %4i     dlogpsi = %20.12f     dhpsioverpsi = %20.12f", p, q, dlogpsi.at(m_first_var_pos+i), dhpsioverpsi.at(m_first_var_pos+i));
@@ -1121,7 +1121,7 @@ void SlaterDetOpt::evaluateGradDerivatives(const ParticleSet::ParticleGradient_t
   for (int i = 0; i < m_act_rot_inds.size(); i++) {
     const int p = m_act_rot_inds.at(i).first;
     const int q = m_act_rot_inds.at(i).second;
-    dgradlogpsi.at(m_first_var_pos+i) += m_hder_mat.at(p+q*m_nlc) - m_hder_mat.at(q+p*m_nlc);
+    dgradlogpsi.at(m_first_var_pos+i) += m_hder_mat.at(p+q*m_nel);// - m_hder_mat.at(q+p*m_nlc);
   }
 
   // reset the internally stored derivatives to zero in preperation for the next sample
