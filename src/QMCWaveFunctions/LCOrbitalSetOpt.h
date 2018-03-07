@@ -593,6 +593,73 @@ template<class BS> class LCOrbitalSetOpt : public SPOSetBase {
 
     }
 
+    void evaluate_notranspose_general_val_only(const ParticleSet& P,
+                                               const char mt,
+                                               std::vector<int>::const_iterator ostart,
+                                               std::vector<int>::const_iterator oend,
+                                               std::vector<int>::const_iterator pstart,
+                                               std::vector<int>::const_iterator pend,
+                                               ValueType * const vmat) {
+
+      // get the number of linear combinations
+      const int no = std::distance(ostart, oend);
+
+      // get the number of particles
+      const int np = std::distance(pstart, pend);
+
+      // get the number of basis orbitals
+      const int nb = BasisSetSize;
+
+      ensure_vector_is_big_enough(m_lc_coeffs, no * nb);
+      ensure_vector_is_big_enough(m_basis_vals, np * nb);
+      if ( m_temp_p.size() != nb ) m_temp_p.resize(nb);
+      if ( m_temp_g.size() != nb ) m_temp_g.resize(nb);
+      if ( m_temp_l.size() != nb ) m_temp_l.resize(nb);
+
+      // get convenient name for iterator type
+      typedef std::vector<int>::const_iterator Iter;
+
+      // Evaluate and store the basis values, derivatives, and second derivatives for each particle position.
+      // We store these data in five column-major-ordered (# of basis states) by (# of particles) matrices,
+      // ( 1 matrix in m_basis_vals, 1 matrix in m_basis_der2, and 3 matrices in m_basis_der1 )
+      {
+        int i = 0;
+        for (Iter it = pstart; it != pend; it++, i++) {
+
+          // evaluate basis set data using the internal spo set if we have one
+          if ( m_spo_set ) m_spo_set->evaluate(P, *it, m_temp_p, m_temp_g, m_temp_l);
+
+          // evaluate basis set data for a particle move
+          else if ( mt == 'p' ) m_basis_set->evaluateAllForPtclMove(P, *it);
+
+          // evaluate basis set data for a walker move
+          else if ( mt == 'w' ) m_basis_set->evaluateForWalkerMove(P, *it);
+
+          // error for no internal spo set and an unknown move type
+          else throw std::runtime_error("unknown move type in LCOrbitalSetOpt::evaluate_notranspose_general");
+
+          // get references to the basis set data
+          ValueVector_t & data_p = ( m_spo_set ? m_temp_p : m_basis_set->Phi );
+
+          // copy values into a column of the basis value matrix
+          BLAS::copy(nb, &data_p[0], 1, &m_basis_vals[i*nb], 1);
+
+        }
+      }
+
+      // Store the slice of the linear combination coefficient matrix that we need in a column-major-ordered
+      // (# of linear combinations) by (# of basis states) matrix.
+      {
+        int i = 0;
+        for (Iter it = ostart; it != oend; it++, i++)
+          BLAS::copy(nb, &(*m_B.begin()) + (*it)*nb, 1, &m_lc_coeffs[i], no);
+      }
+
+      // compute the matrix of linear combination values for each particle
+      BLAS::gemm('N', 'N', no, np, nb, ValueType(1.0), &m_lc_coeffs[0], no, &m_basis_vals[0], nb, ValueType(0.0), vmat, no);
+
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     /// \brief  Evaluates the values, x,y,z derivatives, and x-y-z-summed second derivatives of the
     ///         linear combinations in the range [os,oe) at the particle positions in the range [ps,pe).
@@ -691,19 +758,14 @@ template<class BS> class LCOrbitalSetOpt : public SPOSetBase {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     inline void evaluate(const ParticleSet& P, int iat, ValueVector_t& psi) {
 
-      // check input vector dimension
-      this->check_input_dim("psi", "LCOrbitalSetOpt::evaluate", psi.size(), this->OrbitalSetSize);
+      // prepare orbital list
+      std::vector<int>::const_iterator oend = prepare_index_vector_contiguous(0, psi.size(), m_oidx);
 
-      // resize temporary arrays if necessary
-      if ( m_temp_g.size() != BasisSetSize ) m_temp_g.resize(BasisSetSize);
-      if ( m_temp_l.size() != BasisSetSize ) m_temp_l.resize(BasisSetSize);
+      // prepare particle list
+      std::vector<int>::const_iterator pend = prepare_index_vector_contiguous(iat, iat+1, m_pidx);
 
-      // sanity check
-      if ( m_temp_g.size() < psi.size() )
-        throw std::runtime_error("unexpected too-small size of m_temp_g in LCOrbitalSetOpt::evaluate");
-
-      // evaluate the first psi.size() orbitals for the particle with index iat
-      this->evaluate_notranspose_ranges(P, 'p', 0, psi.size(), iat, iat+1, psi.data(), &m_temp_g[0], &m_temp_l[0]);
+      // evaluate
+      evaluate_notranspose_general_val_only(P, 'p', m_oidx.begin(), oend, m_pidx.begin(), pend, psi.data());
 
     }
 

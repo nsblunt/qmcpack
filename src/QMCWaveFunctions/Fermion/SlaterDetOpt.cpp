@@ -1061,7 +1061,7 @@ void SlaterDetOpt::evaluateDerivativesForNonLocalPP(ParticleSet& P,
 
   if ( iat >= m_first && iat < m_last ) {
     // Update the row of the orbital matrix, for the electron that moved
-    Phi->evaluate(P, iat, m_orb_val_vec_all, m_orb_der_vec_all, m_orb_lap_vec_all);
+    Phi->evaluate(P, iat, m_orb_val_vec_all);
 
     std::copy(m_orb_val_vec_all.begin(), m_orb_val_vec_all.begin()+m_nel, m_orb_val_vec.begin());
     std::copy(m_orb_val_vec.begin(), m_orb_val_vec.end(), m_orb_val_nlpp[iat-m_first]);
