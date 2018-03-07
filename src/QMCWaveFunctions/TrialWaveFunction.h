@@ -302,6 +302,11 @@ public:
   void evaluateGradDerivatives(const ParticleSet::ParticleGradient_t& G_in,
                                std::vector<RealType>& dgradlogpsi);
 
+  void evaluateDerivativesForNonLocalPP(ParticleSet& P,
+                                      int iat,
+                                      const opt_variables_type& optvars,
+                                      std::vector<RealType>& dlogpsi);
+
   /** evalaute the values of the wavefunction, gradient and laplacian  for all the walkers */
   //void evaluate(WalkerSetRef& W, OrbitalBase::ValueVectorType& psi);
   /** evaluate the hessian w.r.t. electronic coordinates of particle iat **/

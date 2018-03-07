@@ -109,7 +109,7 @@ namespace qmcplusplus
     {
       Matrix<RealType> dratio(optvars.num_active_vars,nknot);
       std::vector<RealType> dlogpsi_t(dlogpsi.size(),0.0);
-      std::vector<RealType> dhlogpsi_t(dlogpsi.size(),0.0);
+      //std::vector<RealType> dhlogpsi_t(dlogpsi.size(),0.0);
 
       DistanceTableData* myTable = W.DistTables[myTableIndex];
       RealType esum=0.0;
@@ -142,12 +142,18 @@ namespace qmcplusplus
           W.acceptMove(iel);
 
           std::fill(dlogpsi_t.begin(),dlogpsi_t.end(),0.0);
-          psi.evaluateDerivatives(W, optvars, dlogpsi_t,dhlogpsi_t);
+
+          psi.evaluateDerivativesForNonLocalPP(W, iel, optvars, dlogpsi_t);
+
+          //psi.evaluateDerivatives(W, optvars, dlogpsi_t,dhlogpsi_t);
           for(int v=0; v<dlogpsi_t.size(); ++v) dratio(v,j)=dlogpsi_t[v];
 
           PosType md=-1.0*deltarV[j];
           W.makeMoveAndCheck(iel,md);
           W.acceptMove(iel);
+
+          //psi.evaluateLog(W);
+          //psi.evaluateDerivatives(W, optvars, dlogpsi_t,dhlogpsi_t);
         }
 
         for(int j=0; j<nknot; ++j) psiratio[j]*=sgridweight_m[j];

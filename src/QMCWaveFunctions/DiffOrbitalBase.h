@@ -88,6 +88,15 @@ struct DiffOrbitalBase
                                    std::vector<RealType>& dlogpsi,
                                    std::vector<RealType>& dhpsioverpsi)=0;
 
+  virtual void evaluateDerivativesForNonLocalPP(ParticleSet& P,
+                                              int iat,
+                                              const opt_variables_type& optvars,
+                                              std::vector<RealType>& dlogpsi)
+  {
+    app_error() << "Need specialization of DiffOrbitalBase::evaluateDerivatives.\n";
+    abort();
+  }
+
   virtual void evaluateDerivRatios(ParticleSet& VP, const opt_variables_type& optvars, Matrix<ValueType>& dratios);
 
   virtual void multiplyDerivsByOrbR(std::vector<RealType>& dlogpsi)

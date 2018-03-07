@@ -828,6 +828,20 @@ void TrialWaveFunction::evaluateGradDerivatives(const ParticleSet::ParticleGradi
   }
 }
 
+void TrialWaveFunction::evaluateDerivativesForNonLocalPP(ParticleSet& P,
+   int iat,
+   const opt_variables_type& optvars,
+   std::vector<RealType>& dlogpsi)
+{
+  for (int i=0; i<Z.size(); i++)
+  {
+    if (Z[i]->dPsi)
+      (Z[i]->dPsi)->evaluateDerivativesForNonLocalPP(P, iat, optvars, dlogpsi);
+    else
+      Z[i]->evaluateDerivativesForNonLocalPP(P, iat, optvars, dlogpsi);
+  }
+}
+
 TrialWaveFunction::RealType
 TrialWaveFunction::KECorrection() const
 {

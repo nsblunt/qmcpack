@@ -150,6 +150,11 @@ public:
                                    std::vector<RealType>& dlogpsi,
                                    std::vector<RealType>& dhpsioverpsi);
 
+  virtual void evaluateDerivativesForNonLocalPP(ParticleSet& P,
+                                              int iat,
+                                              const opt_variables_type& active,
+                                              std::vector<RealType>& dlogpsi);
+
   // used by DiracDeterminantWithBackflow
   virtual void evaluateDerivatives(ParticleSet& P,
                                    const opt_variables_type& active,

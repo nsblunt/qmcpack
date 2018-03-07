@@ -112,7 +112,7 @@ vdeps(1,std::vector<double>()),
                                           true, // ground state?
                                           false, // variance correct,
                                           true, 
-                                          false, // print matrices,
+                                          true, // print matrices,
                                           true, // build matrices
                                           false, // spam
                                           false, // use var deps?

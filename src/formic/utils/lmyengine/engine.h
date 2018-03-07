@@ -310,7 +310,7 @@ public:
             std::vector<double> shift_scale,
             const bool variance_correction=false,
             const bool energy_print=true,
-            const bool matrix_print=false,
+            const bool matrix_print=true,
             const bool build_lm_matrix=true,
             const bool spam=false,
             const bool chase_lowest=true,

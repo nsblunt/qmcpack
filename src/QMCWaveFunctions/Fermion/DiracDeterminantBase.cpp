@@ -611,6 +611,14 @@ DiracDeterminantBase::evaluateDerivatives(ParticleSet& P,
 {
 }
 
+void
+DiracDeterminantBase::evaluateDerivativesForNonLocalPP(ParticleSet& P,
+    int iat,
+    const opt_variables_type& active,
+    std::vector<RealType>& dlogpsi)
+{
+}
+
 OrbitalBasePtr DiracDeterminantBase::makeClone(ParticleSet& tqp) const
 {
   APP_ABORT(" Illegal action. Cannot use DiracDeterminantBase::makeClone");

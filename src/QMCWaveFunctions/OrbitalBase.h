@@ -375,6 +375,16 @@ struct OrbitalBase: public QMCTraits
                                    const opt_variables_type& optvars,
                                    std::vector<RealType>& dlogpsi,
                                    std::vector<RealType>& dhpsioverpsi) ;
+
+  virtual void evaluateDerivativesForNonLocalPP(ParticleSet& P,
+                                              int iat,
+                                              const opt_variables_type& optvars,
+                                              std::vector<RealType>& dlogpsi)
+  {
+    app_error() << "Need specialization of OrbitalBase::evaluateDerivativesForNonLocalPP.\n";
+    abort();
+  }
+
   virtual void multiplyDerivsByOrbR(std::vector<RealType>& dlogpsi)
   {
     RealType myrat = std::exp(LogValue)*std::cos(PhaseValue);

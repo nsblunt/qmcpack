@@ -60,8 +60,14 @@ class SlaterDetOpt : public DiracDeterminantBase {
     /// \brief   matrix of orbital values for orbitals in this determinant
     SPOSetBase::ValueMatrix_t m_orb_val_mat;
 
+    /// \brief   matrix of orbital values for orbitals in this determinant, for non-local ECP derivative calculation
+    SPOSetBase::ValueMatrix_t m_orb_val_nlpp;
+
     /// \brief   inverse of the orbital value matrix
     SPOSetBase::ValueMatrix_t m_orb_inv_mat;
+
+    /// \brief   inverse of the orbital value matrix, used in non-local ECP derivative calculation
+    SPOSetBase::ValueMatrix_t m_orb_inv_nlpp;
 
     /// \brief   matrix of orbital gradients for orbitals in this determinant (each element is a length 3 tiny vector)
     SPOSetBase::GradMatrix_t  m_orb_der_mat;
@@ -72,11 +78,23 @@ class SlaterDetOpt : public DiracDeterminantBase {
     /// \brief   matrix of orbital values for all molecular orbitals
     SPOSetBase::ValueMatrix_t m_orb_val_mat_all;
 
+    /// \brief   matrix of orbital values for all molecular orbitals, used for non-local ECP derivative calculation
+    SPOSetBase::ValueMatrix_t m_orb_val_nlpp_all;
+
     /// \brief   matrix of orbital gradients for all molecular orbitals (each element is a length 3 tiny vector)
     SPOSetBase::GradMatrix_t  m_orb_der_mat_all;
 
     /// \brief   matrix of x,y,z summed orbital laplacians for all molecular orbitals (each element is the sum of the d2dx2, d2dy2, and d2dz2 derivatives for the orbital)
     SPOSetBase::ValueMatrix_t m_orb_lap_mat_all;
+
+    /// \brief   vector of orbital values for all orbitals for a particular particle
+    SPOSetBase::ValueVector_t m_orb_val_vec_all;
+
+    /// \brief   vector of orbital gradients for all orbitals for a particular particle
+    SPOSetBase::GradVector_t  m_orb_der_vec_all;
+
+    /// \brief   vector of x,y,z summed orbital laplacians for all orbitals for a particular particle
+    SPOSetBase::ValueVector_t m_orb_lap_vec_all;
 
     /// \brief   vector of orbital values for orbitals in this determinant for a particular particle
     SPOSetBase::ValueVector_t m_orb_val_vec;
@@ -222,6 +240,11 @@ class SlaterDetOpt : public DiracDeterminantBase {
                              const opt_variables_type& optvars,
                              std::vector<RealType>& dlogpsi,
                              std::vector<RealType>& dhpsioverpsi);
+
+    void evaluateDerivativesForNonLocalPP(ParticleSet& P,
+                                          int iat,
+                                          const opt_variables_type& optvars,
+                                          std::vector<RealType>& dlogpsi);
 
     void evaluateGradDerivatives(const ParticleSet::ParticleGradient_t& G_in,
                                  std::vector<RealType>& dgradlogpsi);

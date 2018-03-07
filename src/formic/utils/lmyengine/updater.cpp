@@ -291,6 +291,16 @@ void cqmc::engine::HDLinMethodUpdater::engine_update_build_matrix(const formic::
 
   const bool print_mats = false;
 
+  // print the matrix if requested
+  if ( print_matrix && my_rank == 0 ) {
+
+    // hamiltonian
+    output << hh.print("%12.6f", "hamiltonian");
+
+    // overlap
+    output << ss.print("%12.6f", "overlap");
+  }
+
   boost::shared_ptr< cqmc::engine::EigenSolver > eigensolver(new cqmc::engine::DavidsonLMHD(dep_ptr,
                                                                                             hh.cols(),
                                                                                             lm_krylov_iter,

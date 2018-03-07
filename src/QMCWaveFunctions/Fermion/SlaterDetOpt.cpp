@@ -212,12 +212,18 @@ void SlaterDetOpt::resetTargetParticleSet(ParticleSet& P) {
 
   // resize matrices and arrays
   m_orb_val_mat_all.resize(m_nel, m_nmo);
+  m_orb_val_nlpp_all.resize(m_nel, m_nmo);
   m_orb_der_mat_all.resize(m_nel, m_nmo);
   m_orb_lap_mat_all.resize(m_nel, m_nmo);
   m_orb_inv_mat.resize(m_nel, m_nel);
+  m_orb_inv_nlpp.resize(m_nel, m_nel);
   m_orb_val_mat.resize(m_nel, m_nel);
+  m_orb_val_nlpp.resize(m_nel, m_nel);
   m_orb_der_mat.resize(m_nel, m_nel);
   m_orb_lap_mat.resize(m_nel, m_nel);
+  m_orb_val_vec_all.resize(m_nmo);
+  m_orb_der_vec_all.resize(m_nmo);
+  m_orb_lap_vec_all.resize(m_nmo);
   m_orb_val_vec.resize(m_nel);
   m_orb_der_vec.resize(m_nel);
   m_orb_lap_vec.resize(m_nel);
@@ -1043,6 +1049,77 @@ void SlaterDetOpt::evaluateDerivatives(ParticleSet& P,
   // reset the internally stored derivatives to zero in preperation for the next sample
   this->initialize_matrices();
 }
+
+void SlaterDetOpt::evaluateDerivativesForNonLocalPP(ParticleSet& P,
+                                                    int iat,
+                                                    const opt_variables_type& optvars,
+                                                    std::vector<RealType>& dlogpsi)
+{
+  std::copy(m_orb_inv_mat.begin(),     m_orb_inv_mat.end(),     m_orb_inv_nlpp.begin());
+  std::copy(m_orb_val_mat.begin(),     m_orb_val_mat.end(),     m_orb_val_nlpp.begin());
+  std::copy(m_orb_val_mat_all.begin(), m_orb_val_mat_all.end(), m_orb_val_nlpp_all.begin());
+
+  if ( iat >= m_first && iat < m_last ) {
+    // Update the row of the orbital matrix, for the electron that moved
+    Phi->evaluate(P, iat, m_orb_val_vec_all, m_orb_der_vec_all, m_orb_lap_vec_all);
+
+    std::copy(m_orb_val_vec_all.begin(), m_orb_val_vec_all.begin()+m_nel, m_orb_val_vec.begin());
+    std::copy(m_orb_val_vec.begin(), m_orb_val_vec.end(), m_orb_val_nlpp[iat-m_first]);
+    std::copy(m_orb_val_vec_all.begin(), m_orb_val_vec_all.end(), m_orb_val_nlpp_all[iat-m_first]);
+
+    // Update the inverse matrix:
+
+    // Copy orbital values into inverse matrix, transposing so the slow index will end up as the one we want
+    qmcplusplus::MatrixOperators::transpose(m_orb_val_nlpp, m_orb_inv_nlpp);
+
+    RealType LogTemp, PhaseTemp;
+
+    // Get the log of the determinant and the inverse of the orbital value matrix
+    LogTemp = InvertWithLog(m_orb_inv_nlpp.data(), m_nel, m_nel, &m_work.at(0), &m_pivot.at(0), PhaseTemp);
+  }
+
+    //app_log() << "iat: " << iat << "   m_first: " << m_first << std::endl;
+
+    //std::vector<char> buff(1000, ' ');
+
+    //app_log() << "printing m_orb_val_mat_all" << std::endl;
+    //for (int p = 0; p < m_nmo; p++) { // loop over orbitals
+    //  for (int a = 0; a < m_nel; a++) { // loop over particles
+    //    const int len = std::sprintf(&buff[0], "  %12.6f", m_orb_val_nlpp_all(a,p));
+    //    for (int k = 0; k < len; k++)
+    //      app_log() << buff[k];
+    //  }
+    //  app_log() << std::endl;
+    //}
+    //app_log() << std::endl;
+
+
+    //app_log() << "printing m_orb_inv_mat" << std::endl;
+    //for (int b = 0; b < m_nel; b++) {
+    //  for (int a = 0; a < m_nel; a++) {
+    //    const int len = std::sprintf(&buff[0], "  %12.6f", m_orb_inv_nlpp(a,b));
+    //    for (int k = 0; k < len; k++)
+    //      app_log() << buff[k];
+    //  }
+    //  app_log() << std::endl;
+    //}
+    //app_log() << std::endl;
+
+
+  BLAS::gemm('N', 'T', m_nel, m_nmo, m_nel, RealType(1.0), m_orb_inv_nlpp.data(), m_nel,
+             m_orb_val_nlpp_all.data(), m_nmo, RealType(1.0), &m_pder_mat.at(0), m_nel);
+
+  for (int i = 0; i < m_act_rot_inds.size(); i++) {
+    const int p = m_act_rot_inds.at(i).first;
+    const int q = m_act_rot_inds.at(i).second;
+    dlogpsi.at(m_first_var_pos+i) += m_pder_mat.at(p+q*m_nel); // - m_pder_mat.at(q+p*m_nlc);
+  }
+
+
+  // reset the internally stored derivatives to zero in preperation for the next sample
+  std::fill(m_pder_mat.begin(), m_pder_mat.end(), 0.0);
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// \brief  Evaluate the derivatives (with respect to optimizable parameters) of the gradient of
