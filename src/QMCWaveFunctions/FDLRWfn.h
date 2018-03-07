@@ -128,6 +128,13 @@ namespace qmcplusplus {
 
     ValueType curRatio;
 
+    // The scaling factors for the new FDLR wave function after a particle move.
+    // These are calculated in ratio and ratioGrad. Importantly, when calculating
+    // non-local ECP parameter derivatives, they need to be stored and reused
+    // in evaluateDerivativeForNonLocalPP.
+    ValueType scaling_fac_1_new;
+    ValueType scaling_fac_2_new;
+
     // Temporary particleset
     ParticleSet* tempP;
 
@@ -207,6 +214,9 @@ namespace qmcplusplus {
 
     void evaluateDerivatives(ParticleSet& P, const opt_variables_type& optvars,
         std::vector<RealType>& dlogpsi, std::vector<RealType>& dhpsioverpsi);
+
+    void evaluateDerivativesForNonLocalPP(ParticleSet& P, int iat,
+        const opt_variables_type& optvars, std::vector<RealType>& dlogpsi);
 
     void copy_recompute_vector(const opt_variables_type& vars_full, opt_variables_type& vars_part);
 

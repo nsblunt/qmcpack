@@ -580,8 +580,8 @@ namespace qmcplusplus {
     FDLRWfn::ValueType scaling_fac_1 = 1/(1 - psi_minus/psi_plus);
     FDLRWfn::ValueType scaling_fac_2 = 1/(psi_plus/psi_minus - 1);
 
-    FDLRWfn::ValueType scaling_fac_1_new = 1/(1 - psi_minus_new/psi_plus_new);
-    FDLRWfn::ValueType scaling_fac_2_new = 1/(psi_plus_new/psi_minus_new - 1);
+    scaling_fac_1_new = 1/(1 - psi_minus_new/psi_plus_new);
+    scaling_fac_2_new = 1/(psi_plus_new/psi_minus_new - 1);
 
     // The gradient of the log of the FDLR wave function, evaluated at the
     // particles' new coordinates.
@@ -792,8 +792,8 @@ namespace qmcplusplus {
     FDLRWfn::ValueType scaling_fac_1 = 1/(1 - psi_minus/psi_plus);
     FDLRWfn::ValueType scaling_fac_2 = 1/(psi_plus/psi_minus - 1);
 
-    FDLRWfn::ValueType scaling_fac_1_new = 1/(1 - psi_minus_new/psi_plus_new);
-    FDLRWfn::ValueType scaling_fac_2_new = 1/(psi_plus_new/psi_minus_new - 1);
+    scaling_fac_1_new = 1/(1 - psi_minus_new/psi_plus_new);
+    scaling_fac_2_new = 1/(psi_plus_new/psi_minus_new - 1);
 
     // Calculate the ratio of new and old FDLR wave functions:
     // curRatio = \frac{ \psi_+(R_new) - \psi_-(R_new) }{ \psi_+(R_old) - \psi_-(R_old) }
@@ -1078,6 +1078,80 @@ namespace qmcplusplus {
       int d_loc = d_vars_driver.where(0);
       std::copy(dlogpsi_fdlr_d.begin(), dlogpsi_fdlr_d.begin()+d_vars_driver.size(), dlogpsi.begin()+d_loc);
       std::copy(dhpsioverpsi_fdlr_d.begin(), dhpsioverpsi_fdlr_d.begin()+d_vars_driver.size(), dhpsioverpsi.begin()+d_loc);
+    }
+
+  }
+
+  // IMPORTANT ASSUMPTION: This is for use in calculating the non-local ECP component
+  // of the parameter derivatives. Before this is called, ratio or ratioGrad *must*
+  // be called first, as these calculate scaling_fac_1_new and scaling_fac_2_new,
+  // which is used here. This routine is performance critical, so storing these is
+  // very helpful, and avoids having to "undo" changes to the other important parameters
+  // when recalculating things.
+  void FDLRWfn::evaluateDerivativesForNonLocalPP(ParticleSet& P, int iat,
+      const opt_variables_type& optvars, std::vector<FDLRWfn::RealType>& dlogpsi)
+  {
+
+    if ((! opt_d_vars) && (! opt_x_vars)) {
+      return;
+    }
+
+    // The number of "x" parameters (which is also the number of "d"
+    // parameters, hence the name - it is *not* the total number of both
+    // sets of parameters together).
+    int nvars_x_or_d;
+
+    // Zero all vectors where the derivatives will be accumulated.
+    std::fill(dlogpsi_xpd.begin(), dlogpsi_xpd.begin()+x_vars.size(), 0.0);
+    std::fill(dlogpsi_xmd.begin(), dlogpsi_xmd.begin()+x_vars.size(), 0.0);
+
+    m_wfn_xpd->evaluateDerivativesForNonLocalPP(P, iat, x_vars, dlogpsi_xpd);
+
+    m_wfn_xmd->evaluateDerivativesForNonLocalPP(P, iat, x_vars, dlogpsi_xmd);
+
+    // To enforce singlet symmetry, we need to add together the derivatives
+    // coming from both the up and down determinants, because now the same
+    // optimizable parameters appear in both determinants, so the derivative
+    // w.r.t those parameters is a sum, by the product rule.
+    if (singlet)
+    {
+      nvars_x_or_d = x_vars.size()/2;
+
+      for (int i=0; i<nvars_x_or_d; i++)
+      {
+        dlogpsi_xpd[i] += dlogpsi_xpd[i+nvars_x_or_d];
+        dlogpsi_xmd[i] += dlogpsi_xmd[i+nvars_x_or_d];
+      }
+    } else {
+      nvars_x_or_d = x_vars.size();
+    }
+
+    // Now finally calculate the derivatives of the log of the FDLR wave
+    // function and of the FDLR local energy, or "x" and/or "d" parameters,
+    // as requested by the user.
+    if (opt_x_vars)
+    {
+      for (int i=0; i < x_vars_driver.size(); i++) {
+        dlogpsi_fdlr_x[i] = scaling_fac_1_new * dlogpsi_xpd[i] - scaling_fac_2_new * dlogpsi_xmd[i];
+      }
+    }
+    if (opt_d_vars)
+    {
+      for (int i=0; i < d_vars_driver.size(); i++) {
+        dlogpsi_fdlr_d[i] = scaling_fac_1_new * dlogpsi_xpd[i] + scaling_fac_2_new * dlogpsi_xmd[i];
+      }
+    }
+
+    // Copy the FDLR derivatives to the FDLR section of the full optvars
+    // vector, which contains the derivatives with respect to *all*
+    // optimizable parameters in the wave function.
+    if (opt_x_vars) {
+      int x_loc = x_vars_driver.where(0);
+      std::copy(dlogpsi_fdlr_x.begin(), dlogpsi_fdlr_x.begin()+x_vars_driver.size(), dlogpsi.begin()+x_loc);
+    }
+    if (opt_d_vars) {
+      int d_loc = d_vars_driver.where(0);
+      std::copy(dlogpsi_fdlr_d.begin(), dlogpsi_fdlr_d.begin()+d_vars_driver.size(), dlogpsi.begin()+d_loc);
     }
 
   }
