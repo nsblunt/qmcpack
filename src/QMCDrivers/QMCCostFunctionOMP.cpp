@@ -459,7 +459,7 @@ void QMCCostFunctionOMP::engine_checkConfigurations(cqmc::engine::LMYEngine * En
           der_rat_samp.at(i+1) = Dsaved.at(i);
 
         // evaluate local energy
-        etmp= hClones[ip]->evaluate(wRef);
+        //etmp= hClones[ip]->evaluate(wRef);
         
         // energy dervivatives 
         le_der_samp.at(0) = etmp;
